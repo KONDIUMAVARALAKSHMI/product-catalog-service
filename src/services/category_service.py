@@ -15,6 +15,7 @@ class CategoryService:
             )
             self.uow.categories.add(category)
             self.uow.commit()
+            # Ensure attributes are loaded before session potentially closes
             return category
         except Exception as e:
             self.uow.rollback()
