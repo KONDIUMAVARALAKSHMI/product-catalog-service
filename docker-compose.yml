@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: product_catalog_db
+    environment:
+      POSTGRES_DB: product_catalog
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
