@@ -47,7 +47,7 @@ def update_product(id: UUID, product_in: ProductUpdate, service: ProductService 
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@router.delete("/{id}", status_code=status.HTTP_201_CREATED) # Requirement says 204, will fix in next step
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(id: UUID, service: ProductService = Depends(get_product_service)):
     # The requirement says 204 No Content, but also 404 if not found.
     # We should return 204 if successful.
