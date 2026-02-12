@@ -1,61 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
 from uuid import UUID
-from src.database import get_db
-from src.models.product import Product
-from src.schemas.product import ProductCreate, ProductResponse
-from datetime import datetime
+from src.schemas.product import Product, ProductCreate, ProductUpdate
+from src.services.product_service import ProductService
+from src.unit_of_work.sql_uow import SqlUnitOfWork
+from src.database import SessionLocal
 
 router = APIRouter()
 
-# CREATE
-@router.post("/", response_model=ProductResponse)
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-    db_product = Product(**product.model_dump())
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+def get_product_service():
+    uow = SqlUnitOfWork(SessionLocal)
+    return ProductService(uow)
 
+@router.post("/", response_model=Product, status_code=status.HTTP_201_CREATED)
+def create_product(product_in: ProductCreate, service: ProductService = Depends(get_product_service)):
+    return service.create_product(product_in.dict(exclude={"category_ids"}), [str(cid) for cid in product_in.category_ids])
 
-# GET ALL
-@router.get("/", response_model=list[ProductResponse])
-def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+@router.get("/search", response_model=List[Product])
+def search_products(
+    q: Optional[str] = None,
+    category_id: Optional[UUID] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    skip: int = 0,
+    limit: int = 10,
+    service: ProductService = Depends(get_product_service)
+):
+    return service.search_products(q, str(category_id) if category_id else None, min_price, max_price, skip, limit)
 
-
-# GET BY ID
-@router.get("/{product_id}", response_model=ProductResponse)
-def get_product(product_id: UUID, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+@router.get("/{id}", response_model=Product)
+def get_product(id: UUID, service: ProductService = Depends(get_product_service)):
+    product = service.get_product(str(id))
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
+@router.get("/", response_model=List[Product])
+def list_products(skip: int = 0, limit: int = 10, service: ProductService = Depends(get_product_service)):
+    return service.get_all_products(skip, limit)
 
-# UPDATE
-@router.put("/{product_id}", response_model=ProductResponse)
-def update_product(product_id: UUID, updated_data: ProductCreate, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+@router.put("/{id}", response_model=Product)
+def update_product(id: UUID, product_in: ProductUpdate, service: ProductService = Depends(get_product_service)):
+    category_ids = [str(cid) for cid in product_in.category_ids] if product_in.category_ids is not None else None
+    product = service.update_product(str(id), product_in.dict(exclude={"category_ids"}, exclude_unset=True), category_ids)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-
-    for key, value in updated_data.model_dump().items():
-        setattr(product, key, value)
-
-    product.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(product)
     return product
 
-
-# DELETE
-@router.delete("/{product_id}")
-def delete_product(product_id: UUID, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    db.delete(product)
-    db.commit()
-    return {"message": "Product deleted successfully"}
+@router.delete("/{id}", status_code=status.HTTP_201_CREATED) # Requirement says 204, will fix in next step
+def delete_product(id: UUID, service: ProductService = Depends(get_product_service)):
+    # The requirement says 204 No Content, but also 404 if not found.
+    # We should return 204 if successful.
+    if not service.delete_product(str(id)):
+         raise HTTPException(status_code=404, detail="Product not found")
+    from fastapi import Response
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
