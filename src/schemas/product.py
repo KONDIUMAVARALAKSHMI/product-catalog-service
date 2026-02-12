@@ -10,7 +10,7 @@ class CategoryBase(BaseModel):
 class CategoryCreate(CategoryBase):
     pass
 
-class Category(CategoryBase):
+class CategorySchema(CategoryBase):
     id: UUID4
     
     class Config:
@@ -32,11 +32,11 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     category_ids: Optional[List[UUID4]] = None
 
-class Product(ProductBase):
+class ProductSchema(ProductBase):
     id: UUID4
     created_at: datetime
     updated_at: datetime
-    categories: List[Category] = []
+    categories: List[CategorySchema] = []
 
     class Config:
         from_attributes = True

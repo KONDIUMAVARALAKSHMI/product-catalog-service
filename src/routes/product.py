@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from uuid import UUID
-from src.schemas.product import Product, ProductCreate, ProductUpdate
+from src.schemas.product import ProductSchema, ProductCreate, ProductUpdate
 from src.services.product_service import ProductService
 from src.unit_of_work.sql_uow import SqlUnitOfWork
 from src.database import SessionLocal
@@ -12,11 +12,11 @@ def get_product_service():
     uow = SqlUnitOfWork(SessionLocal)
     return ProductService(uow)
 
-@router.post("/", response_model=Product, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
 def create_product(product_in: ProductCreate, service: ProductService = Depends(get_product_service)):
     return service.create_product(product_in.dict(exclude={"category_ids"}), [str(cid) for cid in product_in.category_ids])
 
-@router.get("/search", response_model=List[Product])
+@router.get("/search", response_model=List[ProductSchema])
 def search_products(
     q: Optional[str] = None,
     category_id: Optional[UUID] = None,
@@ -28,18 +28,18 @@ def search_products(
 ):
     return service.search_products(q, str(category_id) if category_id else None, min_price, max_price, skip, limit)
 
-@router.get("/{id}", response_model=Product)
+@router.get("/{id}", response_model=ProductSchema)
 def get_product(id: UUID, service: ProductService = Depends(get_product_service)):
     product = service.get_product(str(id))
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@router.get("/", response_model=List[Product])
+@router.get("/", response_model=List[ProductSchema])
 def list_products(skip: int = 0, limit: int = 10, service: ProductService = Depends(get_product_service)):
     return service.get_all_products(skip, limit)
 
-@router.put("/{id}", response_model=Product)
+@router.put("/{id}", response_model=ProductSchema)
 def update_product(id: UUID, product_in: ProductUpdate, service: ProductService = Depends(get_product_service)):
     category_ids = [str(cid) for cid in product_in.category_ids] if product_in.category_ids is not None else None
     product = service.update_product(str(id), product_in.dict(exclude={"category_ids"}, exclude_unset=True), category_ids)
