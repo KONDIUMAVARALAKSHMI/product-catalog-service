@@ -46,16 +46,59 @@ This will:
    uvicorn src.main:app --reload
    ```
 
-## API Documentation
-Once the application is running, you can access the interactive Swagger UI at:
-[http://localhost:8000/docs](http://localhost:8000/docs)
+## API Endpoints & Examples
 
-### Endpoints Summary
-- `GET /products/search`: Search with filters (`q`, `category_id`, `min_price`, `max_price`, `skip`, `limit`).
-- `GET /products`: List all products (paginated).
-- `POST /products`: Create a new product.
-- `GET /categories`: List all categories.
-- `POST /categories`: Create a new category.
+### Products
+
+#### **POST /products/**
+Create a new product.
+**Request:**
+```json
+{
+  "name": "Mechanical Keyboard",
+  "description": "RGB Backlit, Brown Switches",
+  "price": 59.99,
+  "sku": "KEY-001",
+  "category_ids": ["uuid-of-electronics"]
+}
+```
+**Response (201 Created):**
+```json
+{
+  "id": "uuid-pk",
+  "name": "Mechanical Keyboard",
+  "price": 59.99,
+  "sku": "KEY-001",
+  "categories": [...]
+}
+```
+
+#### **GET /products/search**
+Advanced search with filters.
+**Example Query:** `/products/search?q=Keyboard&min_price=50&category_id=uuid`
+**Response (200 OK):** Array of product objects matching criteria.
+
+### Categories
+
+#### **POST /categories/**
+**Request:**
+```json
+{
+  "name": "Electronics",
+  "description": "Computers and gadgets"
+}
+```
+
+## Architectural Decisions
+
+### Repository Pattern & Unit of Work
+- **IRepository**: Provides a generic interface for CRUD operations, decoupling business logic from the specific ORM/DB implementation.
+- **Unit of Work**: Manages the SQLAlchemy session lifecycle and ensures that multiple repository operations (e.g., adding a product and linking its categories) happen within a single atomic transaction.
+
+### Search Strategy
+- **Indexing**: Database-level B-Tree indexes are applied to `name` and `price` columns in the `products` table to ensure performant filtering on large datasets.
+- **Dynamic Filtering**: The `search` method in `ProductRepository` dynamically builds the SQL query based on provided filters (keyword matching via `ILike`, price ranges, and category relationship checks using `any()`).
+- **Pagination**: Results are paginated at the database level using `offset()` and `limit()` to optimize memory usage and response times.
 
 ## Testing
 Run unit tests using pytest:
