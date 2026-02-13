@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from src.routes.product import router as product_router
 from src.routes.category import router as category_router
 from src.database import Base, engine
@@ -12,6 +13,10 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(product_router, prefix="/products", tags=["Products"])
 app.include_router(category_router, prefix="/categories", tags=["Categories"])
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 def health_check():

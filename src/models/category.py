@@ -1,6 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Text, Uuid
+# from sqlalchemy.dialects.postgresql import UUID # Removed
 from sqlalchemy.orm import relationship
 from src.database import Base
 from src.models.junction import product_categories
@@ -8,7 +8,7 @@ from src.models.junction import product_categories
 class Category(Base):
     __tablename__ = "categories"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, unique=True, nullable=False)
     description = Column(Text)
 

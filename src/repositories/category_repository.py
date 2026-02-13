@@ -11,6 +11,7 @@ class CategoryRepository(ICategoryRepository):
         self.session = session
 
     def get_by_id(self, item_id: str) -> Optional[Category]:
+        print(f"DEBUG: get_by_id item_id={item_id} type={type(item_id)}")
         return self.session.query(Category).filter(Category.id == item_id).first()
 
     def get_all(self, skip: int = 0, limit: int = 100) -> List[Category]:

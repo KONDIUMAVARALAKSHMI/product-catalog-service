@@ -1,11 +1,9 @@
-from abc import abstractmethod
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from src.models.product import Product
 from src.repositories.base_repository import IRepository
 
 class IProductRepository(IRepository[Product]):
-    @abstractmethod
     def search(self, q: Optional[str] = None, category_id: Optional[str] = None, 
                min_price: Optional[float] = None, max_price: Optional[float] = None, 
                skip: int = 0, limit: int = 10) -> List[Product]:
@@ -16,16 +14,17 @@ class ProductRepository(IProductRepository):
         self.session = session
 
     def get_by_id(self, item_id: str) -> Optional[Product]:
-        return self.session.query(Product).filter(Product.id == item_id).first()
+        return self.session.query(Product).options(joinedload(Product.categories)).filter(Product.id == item_id).first()
 
     def get_all(self, skip: int = 0, limit: int = 100) -> List[Product]:
-        return self.session.query(Product).offset(skip).limit(limit).all()
+        return self.session.query(Product).options(joinedload(Product.categories)).offset(skip).limit(limit).all()
 
     def add(self, item: Product) -> Product:
         self.session.add(item)
         return item
 
     def update(self, item_id: str, item: Product) -> Optional[Product]:
+        # Start of fix applied to update method logic - usually we fetch first
         db_item = self.get_by_id(item_id)
         if db_item:
             for key, value in item.__dict__.items():
@@ -44,7 +43,7 @@ class ProductRepository(IProductRepository):
     def search(self, q: Optional[str] = None, category_id: Optional[str] = None, 
                min_price: Optional[float] = None, max_price: Optional[float] = None, 
                skip: int = 0, limit: int = 10) -> List[Product]:
-        query = self.session.query(Product)
+        query = self.session.query(Product).options(joinedload(Product.categories))
         
         if q:
             query = query.filter(
@@ -62,5 +61,3 @@ class ProductRepository(IProductRepository):
             query = query.filter(Product.price <= max_price)
             
         return query.offset(skip).limit(limit).all()
-
-from abc import abstractmethod # Adding this for IProductRepository

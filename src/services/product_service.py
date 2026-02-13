@@ -23,6 +23,9 @@ class ProductService:
             
             self.uow.products.add(product)
             self.uow.commit()
+            # Force load categories to prevent DetachedInstanceError after session close
+            # This ensures the relationship is populated before Pydantic serialization
+            _ = product.categories
             return product
         except Exception as e:
             self.uow.rollback()
